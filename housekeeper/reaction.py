@@ -16,9 +16,10 @@ __all__ = ['Reaction']  # only expose a few api
 
 
 class Reaction(object):
-    def __init__(self, user, password):
+    def __init__(self, user, password, posts_location='content/post/'):
         self.user = user
         self.password = password
+        self.posts_location = posts_location
         self.client = github3.login(user, password) # type: github3.github.GitHub
 
     def run(self,
@@ -65,7 +66,7 @@ class Reaction(object):
 
         # do something
         greeting_for_first_time_contributor(event, payload, self.client)
-        check_article_submission(event, payload, self.client, 'posts/')
+        check_article_submission(event, payload, self.client, self.posts_location)
 
     def _issue_comment(
         self,
@@ -116,7 +117,7 @@ def check_article_submission(
     event, # type: Text
     payload, # type: Dict
     client, # type: github3.github.GitHub
-    article_parent_path = 'content/post/',
+    posts_location = 'content/post/', # type: Text
     *args,
     **kwargs
     ):
@@ -141,7 +142,7 @@ def check_article_submission(
     # we only deal with those who make articles
     articles = {} # type: Dict[Text, github3.pulls.PullFile]
     for name, single_file in files_info.items():
-        if name.startswith(article_parent_path):
+        if name.startswith(posts_location):
             articles[name] = single_file
     if not articles:
         return
@@ -157,12 +158,12 @@ def check_article_submission(
 
     # we check the article
     for name, article in articles.items():
-        assert name.startswith(article_parent_path)
+        assert name.startswith(posts_location)
 
         single_article_messages = {} # type: Dict[Text, Text]
 
         # file name checking
-        name_no_parent = name[len(article_parent_path):].lstrip('/')
+        name_no_parent = name[len(posts_location):].lstrip('/')
         if not name_no_parent:
             # unexpected thing happen??
             continue

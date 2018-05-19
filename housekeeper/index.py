@@ -11,6 +11,7 @@ from .reaction import Reaction
 try:
     user = os.environ['GITHUB_USER']
     password = os.environ['GITHUB_PASSWORD']
+    posts_location = os.environ.get('POSTS_LOCATION', 'content/post')
 except KeyError:
     sys.stderr.write(u'you need to specify env var'
                      u'`GITHUB_USER` and `GITHUB_PASSWORD`')
@@ -46,7 +47,7 @@ def webhook():
     except:
         payload = {}
 
-    reaction = Reaction(user, password)
+    reaction = Reaction(user, password, posts_location)
     res = reaction.run(event, payload)
     if res['status'] == 'ok':
         return jsonify(res)
