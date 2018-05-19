@@ -5,12 +5,14 @@ import os
 import sys
 from hashlib import sha1
 import hmac
+from dotenv import load_dotenv, find_dotenv
 
 from flask import Flask, jsonify, request
 
 from .reaction import Reaction
 
 try:
+    load_dotenv(find_dotenv())
     user = os.environ['GITHUB_USER']
     password = os.environ['GITHUB_PASSWORD']
     secret_key = os.environ.get('GITHUB_SECRET', None) # maybe not enabled
