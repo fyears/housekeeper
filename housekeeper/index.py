@@ -1,6 +1,6 @@
 #/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+from __future__ import unicode_literals, print_function
 import os
 import sys
 
@@ -11,7 +11,7 @@ from .reaction import Reaction
 try:
     user = os.environ['GITHUB_USER']
     password = os.environ['GITHUB_PASSWORD']
-    posts_location = os.environ.get('POSTS_LOCATION', 'content/post')
+    posts_location = os.environ.get('POSTS_LOCATION', u'content/post/')
 except KeyError:
     sys.stderr.write(u'you need to specify env var'
                      u'`GITHUB_USER` and `GITHUB_PASSWORD`')

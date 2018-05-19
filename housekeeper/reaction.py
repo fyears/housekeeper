@@ -1,6 +1,6 @@
 #/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+from __future__ import unicode_literals, print_function
 from collections import OrderedDict
 import os
 import re
@@ -16,7 +16,7 @@ __all__ = ['Reaction']  # only expose a few api
 
 
 class Reaction(object):
-    def __init__(self, user, password, posts_location='content/post/'):
+    def __init__(self, user, password, posts_location=u'content/post/'):
         self.user = user
         self.password = password
         self.posts_location = posts_location
@@ -117,7 +117,7 @@ def check_article_submission(
     event, # type: Text
     payload, # type: Dict
     client, # type: github3.github.GitHub
-    posts_location = 'content/post/', # type: Text
+    posts_location = u'content/post/', # type: Text
     *args,
     **kwargs
     ):
@@ -168,7 +168,7 @@ def check_article_submission(
             # unexpected thing happen??
             continue
         if '/' in name_no_parent:
-            single_article_messages['文章所在位置: {}'.format(name)] = (
+            single_article_messages[u'文章所在位置: {}'.format(name)] = (
                 u"如果你投稿的是文章，不应该创建更深的文件；如果不是请忽略。"
             )
         file_name, ext = os.path.splitext(name.split('/')[-1])
@@ -178,7 +178,7 @@ def check_article_submission(
             '.txt',
             '.ipynb'
         }
-        file_name_warning = ''
+        file_name_warning = u''
         if ext.lower() not in allowed_file_exts:
             file_name_warning += (
                 u'只允许这类文件：{t}\n\n'
@@ -188,7 +188,7 @@ def check_article_submission(
                 u"文件名格式应该如 `2018-01-01-something.md`\n\n"
             )
         if file_name_warning:
-            single_article_messages['文件名问题'] = \
+            single_article_messages[u'文件名问题'] = \
                 file_name_warning.rstrip()
 
         # check file content (including yaml meta)
@@ -221,7 +221,7 @@ def _check_article_content(
     if not lines:
         return u'没有内容？？\n\n'
 
-    warning = ''
+    warning = u''
     body_start_line_pos = 0
 
     # check yaml
@@ -291,7 +291,7 @@ def _flattern_messages_to_md_lines(
     """key as the depth-level title, value as the text"""
     res = []
     for k, v in messages.items():
-        res.append(u'{} {}'.format('#'*depth, u'{}'.format(k).strip()))
+        res.append(u'{} {}'.format(u'#'*depth, u'{}'.format(k).strip()))
         if isinstance(v, dict):
             res += _flattern_messages_to_md_lines(v, depth=depth+1)
         else:
@@ -347,7 +347,7 @@ def say_something_if_mentioned(
 
     body_lines = body.split('\n')
     omit_threshold = 3
-    ellipsis = u'\n> ...' if len(body_lines) > omit_threshold else ''
+    ellipsis = u'\n> ...' if len(body_lines) > omit_threshold else u''
     quote_body = u'\n'.join([u'> {}'.format(x) for x in body_lines[:omit_threshold]]) + ellipsis
     comment = (
         u'{quote_body}\n\nHi @{person} you mentioned me!\n'
