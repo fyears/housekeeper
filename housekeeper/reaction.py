@@ -81,6 +81,20 @@ class Reaction(object):
         check_article_submission(
             event, payload, self.logger, self.client, self.posts_location)
 
+    def _issues(
+        self,
+        event, # type: Text
+        payload # type: Dict
+        ):
+        # guard: we don't react for self activity
+        person = payload['comment']['user']['login'] # type: Text
+        if person == self.user:
+            return
+
+        # do something
+        say_something_if_mentioned(
+            event, payload, self.logger, self.client, self.user)
+
     def _issue_comment(
         self,
         event, # type: Text
@@ -332,12 +346,24 @@ def say_something_if_mentioned(
     # type: (...) -> bool
     """echo info if mentioned in issue"""
     if not (
-        event == 'issue_comment' and
-        payload['action'] in {'created', 'edited'}):
+        (
+            event == 'issue_comment' and
+            payload['action'] in {'created', 'edited'}
+        ) or (
+            event == 'issues' and
+            payload['action'] in {'opened', 'edited'}
+        )
+    ):
         return False
 
-    person = payload['comment']['user']['login'] # type: Text
-    body = payload['comment']['body'] # type: Text
+    person = payload['issue']['sender']['login'] # type: Text
+    body = '' # type: Text
+    if event == 'issues':
+        body = payload['issue']['body']
+    elif event == 'issue_comment':
+        body = payload['comment']['body']
+    else:
+        assert False
 
     # very important to avoid infinite mention!!!
     if person == client_user:
