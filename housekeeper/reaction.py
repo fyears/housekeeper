@@ -5,6 +5,7 @@ from collections import OrderedDict
 import os
 import re
 from typing import Any, Dict, List, Text
+import logging
 
 import github3
 import yaml
@@ -16,10 +17,18 @@ __all__ = ['Reaction']  # only expose a few api
 
 
 class Reaction(object):
-    def __init__(self, user, password, posts_location=u'content/post/'):
+    def __init__(self,
+        user, # type: Text
+        password, # type: Text
+        logger, # type: logging.Logger
+        posts_location=u'content/post/' # type: Text
+        ):
+        # type: (...) -> None
         self.user = user
         self.password = password
+        self.logger = logger
         self.posts_location = posts_location
+
         self.client = github3.login(user, password) # type: github3.github.GitHub
 
     def run(self,
@@ -37,17 +46,20 @@ class Reaction(object):
             if callable(runner):
                 runner(event, payload, *args, **kwargs)
         except AttributeError:
+            self.logger.info(u'event {} not implemented'.format(event))
             return {
                 'event': event,
                 'data': u'runner for "{}" is not implemented.'.format(event),
                 'status': 'ok'
             }
         except:
+            self.logger.exception(u'event {} has an exception'.format(event))
             return {
                 'event': event,
                 'data': u'something goes wrong with "{}"'.format(event),
                 'status': 'error'
             }
+        self.logger.info(u'event {} is ok'.format(event))
         return {
             'event': event,
             'data': u'smooth for "{}"'.format(event),
@@ -65,8 +77,9 @@ class Reaction(object):
             return
 
         # do something
-        greeting_for_first_time_contributor(event, payload, self.client)
-        check_article_submission(event, payload, self.client, self.posts_location)
+        greeting_for_first_time_contributor(event, payload, self.logger, self.client)
+        check_article_submission(
+            event, payload, self.logger, self.client, self.posts_location)
 
     def _issue_comment(
         self,
@@ -79,7 +92,8 @@ class Reaction(object):
             return
 
         # do something
-        say_something_if_mentioned(event, payload, self.client, self.user)
+        say_something_if_mentioned(
+            event, payload, self.logger, self.client, self.user)
 
 
 ################################################
@@ -89,16 +103,18 @@ class Reaction(object):
 def greeting_for_first_time_contributor(
     event, # type: Text
     payload, # type: Dict
+    logger, # type: logging.Logger
     client, # type: github3.github.GitHub
     *args,
     **kwargs
     ):
+    # type: (...) -> bool
     """say hi and/or say something about cla to first time contributor"""
     if not (
         event == 'pull_request' and
         payload['action'] == 'opened' and
         payload['pull_request']['author_association'] == 'NONE'):
-        return
+        return False
 
     url_info = extract_info_from_url(payload['pull_request']['url'])
     person = payload['pull_request']['user']['login'] # type: Text
@@ -111,21 +127,24 @@ def greeting_for_first_time_contributor(
         u"Hi, it seems that you're the first time contributor, welcome!\n"
         u'你好，你似乎是第一次投稿，非常欢迎！'
     ).format(person)
+    return True
 
 
 def check_article_submission(
     event, # type: Text
     payload, # type: Dict
+    logger, # type: logging.Logger
     client, # type: github3.github.GitHub
     posts_location = u'content/post/', # type: Text
     *args,
     **kwargs
     ):
+    # type: (...) -> bool
     """we have something to check and comment for every article pull request"""
     if not (
         event == 'pull_request' and
         payload['action'] == 'opened'):
-        return
+        return False
 
     url_info = extract_info_from_url(payload['pull_request']['url'])
     pr = client.pull_request(
@@ -145,7 +164,7 @@ def check_article_submission(
         if name.startswith(posts_location):
             articles[name] = single_file
     if not articles:
-        return
+        return False
 
     # for first time user, we remind them to add members.yaml
     if payload['pull_request']['author_association'] == 'NONE':
@@ -201,16 +220,20 @@ def check_article_submission(
 
         messages[u'文件 `{}` 问题'.format(name)] = single_article_messages
 
-    if messages:
-        person = payload['pull_request']['user']['login'] # type: Text
+    if not messages:
+        return False
 
-        md_lines = [
-            u'# 自动检查',
-            u'@{} 欢迎投稿！不过我们发现了一些问题。'.format(person)
-        ]
-        md_lines += _flattern_messages_to_md_lines(messages, depth=2)
-        comment = u'\n\n'.join(md_lines)
-        issue.create_comment(comment)
+    person = payload['pull_request']['user']['login'] # type: Text
+
+    md_lines = [
+        u'# 自动检查',
+        u'@{} 欢迎投稿！不过我们发现了一些问题。'.format(person)
+    ]
+    md_lines += _flattern_messages_to_md_lines(messages, depth=2)
+    comment = u'\n\n'.join(md_lines)
+    issue.create_comment(comment)
+    logger.info('we created comment for some errors in article submission')
+    return True
 
 def _check_article_content(
     text # type: Text
@@ -302,27 +325,29 @@ def _flattern_messages_to_md_lines(
 def say_something_if_mentioned(
     event, # type: Text
     payload, # type: Dict
+    logger, # type: logging.Logger
     client, # type: github3.github.GitHub
     client_user # type: Text
     ):
+    # type: (...) -> bool
     """echo info if mentioned in issue"""
     if not (
         event == 'issue_comment' and
         payload['action'] in {'created', 'edited'}):
-        return
+        return False
 
     person = payload['comment']['user']['login'] # type: Text
     body = payload['comment']['body'] # type: Text
 
     # very important to avoid infinite mention!!!
     if person == client_user:
-        return
+        return False
 
     pattern = re.compile(
         r'(?:[^a-zA-Z0-9]|^)(@{})(?:[^a-zA-Z0-9]|$)'.format(client_user))
     if pattern.search(body) is None:
         # no mention, no talk
-        return
+        return False
 
     # if 'created', we only need to check whether be mentioned
     if payload['action'] == 'created':
@@ -334,16 +359,15 @@ def say_something_if_mentioned(
         if 'body' not in payload['changes']:
             # body has not been changed,
             # we don't do anything because we had been mentioned.
-            return
+            return False
         if pattern.search(payload['changes']['body']['from']) is not None:
             # although the body has been changed,
             # we had been mentioned before, so do nothing this time.
-            return
+            return False
 
     # huh?
     else:
-        assert ValueError(
-            'unexpected payload action {}'.format(payload['action']))
+        assert False
 
     body_lines = body.split('\n')
     omit_threshold = 3
@@ -358,3 +382,4 @@ def say_something_if_mentioned(
     issue = client.issue(
         url_info['owner'], url_info['repo'], url_info['number'])
     issue.create_comment(comment)
+    return True
