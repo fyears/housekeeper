@@ -376,7 +376,7 @@ def say_something_if_mentioned(
         return False
 
     # if 'created', we only need to check whether be mentioned
-    if payload['action'] == 'created':
+    if payload['action'] in {'opened', 'created'}:
         pass
 
     # if 'edited', we check the 'from' and current,
