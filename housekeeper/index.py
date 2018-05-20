@@ -33,6 +33,14 @@ def hello():
         'status': 'ok'
     })
 
+@app.errorhandler(404)
+def page_not_found(err):
+    """404 page"""
+    return jsonify({
+        'data': 'no where to go :-(',
+        'status': 'error'
+    }), 404
+
 
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
