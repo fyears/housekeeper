@@ -72,7 +72,7 @@ class Reaction(object):
         payload # type: Dict
         ):
         # guard: we don't react for self activity
-        person = payload['pull_request']['user']['login'] # type: Text
+        person = payload['sender']['login'] # type: Text
         if person == self.user:
             return
 
@@ -87,7 +87,7 @@ class Reaction(object):
         payload # type: Dict
         ):
         # guard: we don't react for self activity
-        person = payload['comment']['user']['login'] # type: Text
+        person = payload['sender']['login'] # type: Text
         if person == self.user:
             return
 
@@ -356,7 +356,7 @@ def say_something_if_mentioned(
     ):
         return False
 
-    person = payload['issue']['sender']['login'] # type: Text
+    person = payload['sender']['login'] # type: Text
     body = '' # type: Text
     if event == 'issues':
         body = payload['issue']['body']
